@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>J-FIND · 제주여고 분실물 찾기</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
+<style>
+/* ══════════════════════════════════════════════════════════
+   J-FIND 디자인 토큰
+   현무암(ink) · 제주 바다(sea) · 감귤(tang)
+   ══════════════════════════════════════════════════════════ */
+:root{
+  --ink:#16211F;      /* 현무암 - 본문 */
+  --stone:#677872;    /* 보조 텍스트 */
+  --line:#DDE5E1;     /* 구분선 */
+  --bg:#EFF3F1;       /* 배경 */
+  --card:#FFFFFF;
+  --sea:#0E6E68;      /* 제주 바다 - 주색 */
+  --sea-soft:#E2F0EE;
+  --tang:#F97316;     /* 감귤 - 강조 */
+  --tang-soft:#FFF0E2;
+  --warn:#B45309;
+  --r:16px;
+  --shadow:0 1px 2px rgba(22,33,31,.05), 0 8px 24px -12px rgba(22,33,31,.18);
+  --font:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, 'Malgun Gothic', sans-serif;
+  --mono:ui-monospace, 'SFMono-Regular', Menlo, monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  font-family:var(--font); background:var(--bg); color:var(--ink);
+  font-size:15px; line-height:1.55; letter-spacing:-.01em;
+  padding-bottom:calc(76px + env(safe-area-inset-bottom));
+}
+#app{max-width:480px;margin:0 auto;background:var(--bg);min-height:100vh}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none}
+a{color:inherit}
+
+/* ── 상단 바 ─────────────────────────────── */
+.topbar{
+  position:sticky;top:0;z-index:30;background:rgba(239,243,241,.92);
+  backdrop-filter:blur(12px); border-bottom:1px solid var(--line);
+  padding:14px 20px 12px; display:flex;align-items:center;gap:10px;
+}
+.brand{font-weight:800;font-size:19px;letter-spacing:-.045em}
+.brand span{color:var(--sea)}
+.brand em{font-style:normal;color:var(--tang)}
+.brand-sub{font-size:11.5px;color:var(--stone);font-weight:500;letter-spacing:0}
+.topbar .back{margin-right:2px;font-size:22px;line-height:1;color:var(--stone);padding:2px 6px 6px 0}
+
+main{padding:18px 20px 32px;animation:rise .28s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ── 홈 히어로 : 두 갈래 ──────────────────── */
+.hero{margin:6px 0 22px}
+.hero h1{font-size:27px;line-height:1.28;font-weight:800;letter-spacing:-.05em;margin:0 0 6px}
+.hero p{margin:0;color:var(--stone);font-size:13.5px}
+
+.fork{position:relative;margin:22px 0 26px}
+.fork:before{
+  content:'';position:absolute;left:50%;top:-14px;width:2px;height:20px;
+  background:var(--line);transform:translateX(-1px)
+}
+.fork-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fork-btn{
+  background:var(--card);border-radius:var(--r);padding:20px 14px 18px;
+  text-align:left;box-shadow:var(--shadow);border:1.5px solid transparent;
+  transition:transform .15s, border-color .15s;
+}
+.fork-btn:active{transform:scale(.975)}
+.fork-btn .ico{font-size:26px;display:block;margin-bottom:10px}
+.fork-btn b{display:block;font-size:16.5px;font-weight:800;letter-spacing:-.035em}
+.fork-btn small{display:block;color:var(--stone);font-size:12px;margin-top:3px;letter-spacing:0}
+.fork-btn.lost{border-color:var(--sea-soft)}
+.fork-btn.lost b{color:var(--sea)}
+.fork-btn.found{border-color:var(--tang-soft)}
+.fork-btn.found b{color:var(--tang)}
+
+/* ── 검색창 ──────────────────────────────── */
+.searchbar{
+  display:flex;align-items:center;gap:9px;background:var(--card);
+  border-radius:999px;padding:12px 18px;box-shadow:var(--shadow);
+}
+.searchbar input{border:none;outline:none;flex:1;background:none;font-size:15px}
+.searchbar input::placeholder{color:#A9B6B1}
+
+/* ── 섹션 라벨 ───────────────────────────── */
+.eyebrow{
+  display:flex;align-items:baseline;justify-content:space-between;
+  margin:26px 0 12px;
+}
+.eyebrow h2{font-size:14px;font-weight:800;letter-spacing:-.02em;margin:0}
+.eyebrow span{font-size:11.5px;color:var(--stone);font-family:var(--mono)}
+
+/* ── 물건 카드 ───────────────────────────── */
+.item{
+  display:flex;gap:13px;align-items:center;background:var(--card);
+  border-radius:14px;padding:12px;box-shadow:var(--shadow);
+  margin-bottom:10px;width:100%;text-align:left;
+  transition:transform .13s;
+}
+.item:active{transform:scale(.985)}
+.thumb{
+  width:60px;height:60px;border-radius:11px;background:var(--sea-soft);
+  display:flex;align-items:center;justify-content:center;font-size:26px;
+  flex:0 0 60px;overflow:hidden
+}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.item-body{flex:1;min-width:0}
+.item-body b{display:block;font-size:15.5px;font-weight:700;letter-spacing:-.03em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta{font-size:12.5px;color:var(--stone);margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ── 상태 배지 ───────────────────────────── */
+.badge{
+  display:inline-block;font-size:11px;font-weight:700;padding:3px 8px;
+  border-radius:6px;letter-spacing:-.01em;
+}
+.b-open{background:var(--sea-soft);color:var(--sea)}
+.b-wait{background:#FFF7ED;color:var(--warn)}
+.b-done{background:#EEF1F0;color:var(--stone)}
+
+/* ── 매칭 점수 (시그니처) ─────────────────── */
+.match{
+  background:var(--card);border-radius:14px;padding:14px;margin-bottom:10px;
+  box-shadow:var(--shadow);border-left:4px solid var(--tang)
+}
+.match-top{display:flex;align-items:center;gap:12px}
+.score{
+  font-family:var(--mono);font-size:22px;font-weight:700;color:var(--tang);
+  line-height:1;min-width:52px
+}
+.score small{font-size:11px;color:var(--stone);display:block;font-weight:400;margin-top:3px}
+.gauge{height:6px;background:#EEF1F0;border-radius:3px;overflow:hidden;margin-top:11px}
+.gauge i{display:block;height:100%;background:var(--tang);border-radius:3px;
+  transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.why{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
+.why span{
+  font-size:10.5px;font-family:var(--mono);background:var(--tang-soft);
+  color:var(--warn);padding:2.5px 7px;border-radius:5px
+}
+
+/* ── 폼 ─────────────────────────────────── */
+.field{margin-bottom:16px}
+.field label{display:block;font-size:13px;font-weight:700;margin-bottom:7px;letter-spacing:-.02em}
+.field .hint{font-weight:400;color:var(--stone);font-size:11.5px;margin-left:5px}
+input[type=text],input[type=date],input[type=password],select,textarea{
+  width:100%;padding:13px 14px;border:1.5px solid var(--line);border-radius:12px;
+  background:var(--card);outline:none;transition:border-color .15s
+}
+input:focus,select:focus,textarea:focus{border-color:var(--sea)}
+textarea{resize:vertical;min-height:74px}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{
+  padding:8px 13px;border-radius:999px;border:1.5px solid var(--line);
+  background:var(--card);font-size:13px;font-weight:600;color:var(--stone)
+}
+.chip[aria-pressed=true]{background:var(--sea);border-color:var(--sea);color:#fff}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+.photo-box{
+  border:2px dashed var(--line);border-radius:14px;padding:26px 14px;
+  text-align:center;color:var(--stone);background:var(--card);width:100%
+}
+.photo-box img{max-width:100%;border-radius:10px;display:block;margin:0 auto}
+
+.btn{
+  width:100%;padding:15px;border-radius:14px;background:var(--sea);color:#fff;
+  font-weight:800;font-size:15.5px;letter-spacing:-.02em;
+  box-shadow:0 6px 18px -8px rgba(14,110,104,.6);transition:transform .13s
+}
+.btn:active{transform:scale(.985)}
+.btn.tang{background:var(--tang);box-shadow:0 6px 18px -8px rgba(249,115,22,.6)}
+.btn.ghost{background:var(--card);color:var(--ink);border:1.5px solid var(--line);box-shadow:none}
+.btn[disabled]{opacity:.5}
+
+/* ── 상세 ───────────────────────────────── */
+.detail-hero{
+  background:var(--card);border-radius:var(--r);padding:26px 20px;text-align:center;
+  box-shadow:var(--shadow)
+}
+.detail-hero .big{font-size:62px;line-height:1}
+.detail-hero img{max-width:100%;max-height:230px;border-radius:12px}
+.detail-hero h2{font-size:22px;font-weight:800;letter-spacing:-.04em;margin:14px 0 4px}
+.dl{margin:18px 0 0;padding:0;border-top:1px solid var(--line)}
+.dl div{display:flex;justify-content:space-between;padding:11px 2px;border-bottom:1px solid var(--line);font-size:14px}
+.dl dt{color:var(--stone);margin:0}
+.dl dd{margin:0;font-weight:600;text-align:right;max-width:62%}
+
+.notice{
+  background:var(--sea-soft);color:#0B5651;border-radius:12px;padding:13px 15px;
+  font-size:12.5px;line-height:1.6
+}
+
+/* ── 통계 막대 ──────────────────────────── */
+.bar{display:flex;align-items:center;gap:10px;margin-bottom:9px;font-size:13px}
+.bar b{width:66px;flex:0 0 66px;font-weight:600}
+.bar .track{flex:1;height:10px;background:#E3E9E6;border-radius:5px;overflow:hidden}
+.bar .track i{display:block;height:100%;background:var(--sea);border-radius:5px}
+.bar em{font-style:normal;font-family:var(--mono);font-size:12px;color:var(--stone);width:26px;text-align:right}
+.kpi{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
+.kpi div{background:var(--card);border-radius:13px;padding:14px;box-shadow:var(--shadow)}
+.kpi b{display:block;font-size:24px;font-weight:800;font-family:var(--mono);letter-spacing:-.04em}
+.kpi small{color:var(--stone);font-size:11.5px}
+
+/* ── 하단 탭 ────────────────────────────── */
+.tabbar{
+  position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+  width:100%;max-width:480px;display:grid;grid-template-columns:repeat(4,1fr);
+  background:rgba(255,255,255,.96);backdrop-filter:blur(14px);
+  border-top:1px solid var(--line);z-index:40;
+  padding-bottom:env(safe-area-inset-bottom)
+}
+.tabbar button{padding:11px 0 13px;font-size:10.5px;font-weight:700;color:var(--stone)}
+.tabbar button i{display:block;font-style:normal;font-size:19px;margin-bottom:2px;opacity:.55}
+.tabbar button[aria-current=page]{color:var(--sea)}
+.tabbar button[aria-current=page] i{opacity:1}
+
+/* ── 토스트 / 로딩 ──────────────────────── */
+#toast{
+  position:fixed;left:50%;bottom:92px;transform:translate(-50%,14px);
+  background:var(--ink);color:#fff;padding:12px 20px;border-radius:999px;
+  font-size:13.5px;font-weight:600;opacity:0;pointer-events:none;
+  transition:.28s;z-index:60;max-width:88vw;text-align:center
+}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+.empty{text-align:center;color:var(--stone);padding:44px 20px;font-size:13.5px;line-height:1.7}
+.empty .big{font-size:34px;display:block;margin-bottom:10px;opacity:.5}
+.spin{text-align:center;padding:36px;color:var(--stone);font-size:13px}
+.demo-flag{
+  background:#FFF7ED;color:var(--warn);font-size:11.5px;padding:8px 20px;
+  text-align:center;font-weight:600;border-bottom:1px solid #FDE6CC
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="demoFlag" class="demo-flag" hidden>미리보기 모드 · 예시 데이터로 동작합니다</div>
+  <header class="topbar">
+    <button class="back" id="backBtn" hidden aria-label="뒤로">←</button>
+    <div>
+      <div class="brand"><span>J</span>-<em>FIND</em></div>
+      <div class="brand-sub">제주여고 분실물 찾기</div>
+    </div>
+  </header>
+
+  <main id="view"><div class="spin">불러오는 중…</div></main>
+
+  <nav class="tabbar" id="tabbar">
+    <button data-tab="home"   aria-current="page"><i>🏠</i>홈</button>
+    <button data-tab="search"><i>🔎</i>찾기</button>
+    <button data-tab="add"><i>➕</i>등록</button>
+    <button data-tab="my"><i>🙋</i>MY</button>
+  </nav>
+</div>
+<div id="toast"></div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   ① 서버와 이야기하는 창구
+   ─────────────────────────────────────────────────────────────
+   같은 api() 함수를 쓰지만 상황에 따라 통로가 3가지입니다.
+     · Apps Script 웹앱 안 → google.script.run
+     · 외부 호스팅        → fetch(웹앱 주소)
+     · 아무 설정도 없음   → 예시 데이터(미리보기)
+   ══════════════════════════════════════════════════════════════ */
+const API_URL = 'https://script.google.com/macros/s/AKfycbwBTDb5kuQY94_5MZshW6Kv3kKx8n9Fel8O2FAHZhwx8LSCUuknjoKnxXZGlZ-H6Erv/exec';
+
+const MODE = (window.google && google.script && google.script.run) ? 'gas'
+           : (API_URL ? 'fetch' : 'demo');
+
+function api(action, payload){
+  if(MODE === 'gas'){
+    return new Promise((ok, no) => {
+      google.script.run
+        .withSuccessHandler(r => ok(JSON.parse(r)))
+        .withFailureHandler(e => no(e))
+        .apiCall(action, JSON.stringify(payload || {}));
+    });
+  }
+  if(MODE === 'fetch'){
+    return fetch(API_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},  // 프리플라이트 회피
+      body: JSON.stringify({action, payload: payload || {}})
+    }).then(r => r.json());
+  }
+  return Promise.resolve(demo(action, payload || {}));
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ② 상태와 상수
+   ══════════════════════════════════════════════════════════════ */
+const CATEGORIES = ['전자기기','의류/체육복','지갑/카드','문구류','생활용품','기타'];
+const PLACES = ['교실','복도','도서관','급식실','체육관','운동장','중앙현관','화장실','특별실','기타'];
+const ICON = {'전자기기':'🎧','의류/체육복':'👕','지갑/카드':'💳','문구류':'✏️','생활용품':'☂️','기타':'📦'};
+const LABEL = {PENDING:'승인 대기', APPROVED:'보관 중', CLAIM_REQUESTED:'수령 요청됨',
+               RETURNED:'반환 완료', REJECTED:'반려', SEARCHING:'찾는 중',
+               MATCHED:'후보 발견', WAITING:'확인 대기'};
+
+const S = { tab:'home', photo:'', form:{}, stack:[] };
+const $ = s => document.querySelector(s);
+const view = $('#view');
+const esc = t => String(t==null?'':t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('on');
+  clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove('on'), 2600);
+}
+function loading(){ view.innerHTML = '<div class="spin">불러오는 중…</div>'; }
+function today(){ return new Date().toISOString().slice(0,10); }
+
+function badge(st){
+  const cls = st==='RETURNED' ? 'b-done' : (st==='CLAIM_REQUESTED'||st==='PENDING'||st==='WAITING') ? 'b-wait' : 'b-open';
+  return '<span class="badge '+cls+'">'+(LABEL[st]||st)+'</span>';
+}
+function thumb(it){
+  return it.사진URL
+    ? '<div class="thumb"><img src="'+esc(it.사진URL)+'" alt="" loading="lazy"></div>'
+    : '<div class="thumb">'+(ICON[it.분류]||'📦')+'</div>';
+}
+function itemCard(it){
+  return '<button class="item" onclick="go(\'detail\',\''+it.ID+'\')">'
+    + thumb(it)
+    + '<div class="item-body"><b>'+esc(it.물건이름)+'</b>'
+    + '<div class="meta">📍 '+esc(it.장소)+' · '+esc(it.날짜)+'</div>'
+    + '<div style="margin-top:5px">'+badge(it.상태)+'</div></div></button>';
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ③ 화면 이동
+   ══════════════════════════════════════════════════════════════ */
+function go(name, arg){
+  if(S.tab !== name) S.stack.push(S.tab);
+  S.tab = name;
+  $('#backBtn').hidden = !['detail','claim','admin','stats'].includes(name);
+  document.querySelectorAll('#tabbar button').forEach(b =>
+    b.setAttribute('aria-current', b.dataset.tab===name ? 'page' : 'false'));
+  window.scrollTo(0,0);
+  ({home:Home, search:Search, add:Add, my:My, detail:Detail, claim:Claim,
+    admin:Admin, stats:Stats}[name] || Home)(arg);
+}
+$('#backBtn').onclick = () => go(S.stack.pop() || 'home');
+document.querySelectorAll('#tabbar button').forEach(b => b.onclick = () => { S.stack=[]; go(b.dataset.tab); });
+
+/* ══════════════════════════════════════════════════════════════
+   ④ 화면 ① 홈
+   ══════════════════════════════════════════════════════════════ */
+function Home(){
+  loading();
+  api('list', {limit:5}).then(r => {
+    const list = (r.items||[]).map(itemCard).join('')
+      || '<div class="empty"><span class="big">🫧</span>아직 등록된 물건이 없어요.<br>첫 번째 습득물을 등록해 보세요.</div>';
+    view.innerHTML = `
+      <section class="hero">
+        <h1>잃어버린 물건,<br>학교 안에 있을 거예요</h1>
+        <p>등록된 물건은 학생회실에서 보관합니다</p>
+      </section>
+
+      <div class="searchbar" onclick="go('search')">
+        <span>🔎</span><input placeholder="에어팟, 우산, 체육복…" readonly>
+      </div>
+
+      <div class="fork"><div class="fork-grid">
+        <button class="fork-btn lost" onclick="Add('lost')">
+          <span class="ico">😢</span><b>잃어버렸어요</b><small>분실 신고하기</small></button>
+        <button class="fork-btn found" onclick="Add('found')">
+          <span class="ico">🙌</span><b>주웠어요</b><small>습득물 등록하기</small></button>
+      </div></div>
+
+      <div class="eyebrow"><h2>최근 등록된 물건</h2>
+        <span>${r.total||0}건 보관 중</span></div>
+      ${list}
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px">
+        <button class="btn ghost" onclick="go('stats')">📊 분실물 통계</button>
+        <button class="btn ghost" onclick="go('admin')">🔐 학생회</button>
+      </div>`;
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ⑤ 화면 ② 검색
+   ══════════════════════════════════════════════════════════════ */
+const Q = {keyword:'', category:'전체', place:'전체', days:''};
+
+function Search(){
+  view.innerHTML = `
+    <div class="searchbar">
+      <span>🔎</span>
+      <input id="q" placeholder="무엇을 잃어버렸나요?" value="${esc(Q.keyword)}">
+    </div>
+
+    <div class="eyebrow"><h2>종류</h2></div>
+    <div class="chips" id="cat">
+      ${['전체'].concat(CATEGORIES).map(c =>
+        `<button class="chip" data-v="${c}" aria-pressed="${Q.category===c}">${c}</button>`).join('')}
+    </div>
+
+    <div class="eyebrow"><h2>장소</h2></div>
+    <div class="chips" id="pl">
+      ${['전체'].concat(PLACES).map(c =>
+        `<button class="chip" data-v="${c}" aria-pressed="${Q.place===c}">${c}</button>`).join('')}
+    </div>
+
+    <div class="eyebrow"><h2>기간</h2></div>
+    <div class="chips" id="dy">
+      ${[['','전체'],['7','최근 7일'],['30','최근 30일']].map(([v,t]) =>
+        `<button class="chip" data-v="${v}" aria-pressed="${Q.days===v}">${t}</button>`).join('')}
+    </div>
+
+    <div class="eyebrow"><h2>검색 결과</h2><span id="cnt"></span></div>
+    <div id="results"><div class="spin">불러오는 중…</div></div>`;
+
+  const pick = (id, key) => {
+    const box = $('#'+id);
+    box.onclick = e => {
+      const b = e.target.closest('.chip'); if(!b) return;
+      Q[key] = b.dataset.v;
+      box.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', c===b));
+      load();
+    };
+  };
+  pick('cat','category'); pick('pl','place'); pick('dy','days');
+
+  let timer;
+  $('#q').oninput = e => { Q.keyword = e.target.value; clearTimeout(timer); timer = setTimeout(load, 350); };
+
+  function load(){
+    api('list', Q).then(r => {
+      $('#cnt').textContent = (r.items||[]).length + '건';
+      $('#results').innerHTML = (r.items||[]).map(itemCard).join('')
+        || '<div class="empty"><span class="big">🔍</span>조건에 맞는 물건이 없어요.<br>분실 신고를 남기면 새 물건이 등록될 때 알려드립니다.<br><br><button class="btn" style="max-width:220px;margin:0 auto" onclick="Add(\'lost\')">분실 신고하기</button></div>';
+    });
+  }
+  load();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ⑥ 화면 ③④ 등록 (습득 / 분실)
+      입력 항목을 짧게 유지하는 것이 핵심입니다
+   ══════════════════════════════════════════════════════════════ */
+function Add(kind){
+  S.tab = 'add'; S.photo = '';
+  document.querySelectorAll('#tabbar button').forEach(b =>
+    b.setAttribute('aria-current', b.dataset.tab==='add' ? 'page' : 'false'));
+  kind = kind || 'found';
+  const isFound = kind === 'found';
+  window.scrollTo(0,0);
+
+  view.innerHTML = `
+    <div class="chips" style="margin-bottom:20px">
+      <button class="chip" aria-pressed="${isFound}" onclick="Add('found')">🙌 주웠어요</button>
+      <button class="chip" aria-pressed="${!isFound}" onclick="Add('lost')">😢 잃어버렸어요</button>
+    </div>
+
+    <section class="hero" style="margin-bottom:18px">
+      <h1>${isFound ? '주운 물건을<br>등록해 주세요' : '잃어버린 물건을<br>알려주세요'}</h1>
+      <p>${isFound ? '학생회가 확인한 뒤 목록에 공개됩니다'
+                   : '비슷한 물건이 있으면 바로 찾아드릴게요'}</p>
+    </section>
+
+    <div class="field">
+      <label>사진 <span class="hint">${isFound?'있으면 찾기가 훨씬 쉬워요':'선택'}</span></label>
+      <button class="photo-box" id="photoBtn">📷 사진 찍기 / 고르기</button>
+      <input type="file" id="photoInput" accept="image/*" capture="environment" hidden>
+    </div>
+
+    <div class="field">
+      <label>무엇인가요?</label>
+      <input type="text" id="name" placeholder="예) 흰색 무선 이어폰">
+    </div>
+
+    <div class="field">
+      <label>종류</label>
+      <div class="chips" id="cat">
+        ${CATEGORIES.map((c,i) =>
+          `<button class="chip" data-v="${c}" aria-pressed="${i===0}">${c}</button>`).join('')}
+      </div>
+    </div>
+
+    <div class="field">
+      <label>${isFound ? '어디에서 주웠나요?' : '어디에서 잃어버렸나요?'}</label>
+      <div class="chips" id="pl">
+        ${PLACES.map((c,i) =>
+          `<button class="chip" data-v="${c}" aria-pressed="${i===0}">${c}</button>`).join('')}
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field"><label>${isFound?'주운 날':'잃어버린 날'}</label>
+        <input type="date" id="date" value="${today()}"></div>
+      <div class="field"><label>색상</label>
+        <input type="text" id="color" placeholder="흰색"></div>
+    </div>
+
+    <div class="field">
+      <label>특징 <span class="hint">본인 확인에 쓰입니다</span></label>
+      <textarea id="feat" placeholder="예) 케이스에 고양이 스티커, 오른쪽 모서리가 깨짐"></textarea>
+    </div>
+
+    <div class="eyebrow"><h2>연락받을 정보</h2><span>공개되지 않음</span></div>
+    <div class="row2">
+      <div class="field"><label>학년·반</label><input type="text" id="klass" placeholder="2-3"></div>
+      <div class="field"><label>이름</label><input type="text" id="who" placeholder="김제주"></div>
+    </div>
+
+    <div class="notice" style="margin-bottom:16px">
+      🔒 이름·학반은 학생회만 볼 수 있습니다. 목록에는 물건 정보만 표시돼요.
+      ${isFound ? '<br>지갑·학생증처럼 개인정보가 담긴 물건은 사진 대신 종류만 등록해 주세요.' : ''}
+    </div>
+
+    <button class="btn ${isFound?'tang':''}" id="submit">
+      ${isFound ? '습득물 등록하기' : '분실 신고하기'}</button>`;
+
+  // 종류·장소 선택
+  ['cat','pl'].forEach(id => {
+    const box = $('#'+id);
+    box.onclick = e => {
+      const b = e.target.closest('.chip'); if(!b) return;
+      box.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', c===b));
+    };
+  });
+  const picked = id => $('#'+id+' .chip[aria-pressed=true]')?.dataset.v || '';
+
+  // 사진 : 업로드 전에 브라우저에서 크기를 줄입니다 (용량·속도)
+  $('#photoBtn').onclick = () => $('#photoInput').click();
+  $('#photoInput').onchange = e => {
+    const file = e.target.files[0]; if(!file) return;
+    shrink(file, 1000, 0.75).then(dataUrl => {
+      S.photo = dataUrl;
+      $('#photoBtn').innerHTML = '<img src="'+dataUrl+'" alt="선택한 사진">'
+        + '<div style="margin-top:10px;font-size:12.5px">다시 고르려면 눌러주세요</div>';
+    });
+  };
+
+  $('#submit').onclick = function(){
+    const name = $('#name').value.trim();
+    if(!name){ toast('무엇인지 한 줄만 적어주세요'); $('#name').focus(); return; }
+    this.disabled = true; this.textContent = '보내는 중…';
+
+    const base = {
+      분류: picked('cat'), 물건이름: name, 색상: $('#color').value.trim(),
+      특징: $('#feat').value.trim(), photo: S.photo
+    };
+    const payload = isFound
+      ? Object.assign(base, {습득장소:picked('pl'), 습득날짜:$('#date').value,
+          등록자이름:$('#who').value.trim(), 등록자학반:$('#klass').value.trim()})
+      : Object.assign(base, {분실장소:picked('pl'), 분실날짜:$('#date').value,
+          신고자이름:$('#who').value.trim(), 신고자학반:$('#klass').value.trim()});
+
+    api(isFound ? 'addFound' : 'addLost', payload).then(r => {
+      if(!r.ok){ toast(r.message); this.disabled=false; this.textContent='다시 시도'; return; }
+      isFound ? Done(r) : LostResult(r);
+    });
+  };
+}
+
+/** 등록 완료 화면 */
+function Done(r){
+  window.scrollTo(0,0);
+  view.innerHTML = `
+    <div class="empty" style="padding-top:60px">
+      <span class="big">🎉</span>
+      <div style="font-size:19px;font-weight:800;color:var(--ink);letter-spacing:-.04em">등록되었습니다</div>
+      <p style="margin-top:8px">학생회 확인 후 목록에 공개됩니다.<br>물건은 학생회실에 맡겨 주세요.</p>
+      <div style="font-family:var(--mono);font-size:12px;margin-top:14px;color:var(--stone)">접수번호 ${esc(r.id)}</div>
+    </div>
+    <button class="btn" onclick="go('home')">홈으로</button>`;
+}
+
+/** 분실 신고 결과 + 자동 매칭 후보 */
+function LostResult(r){
+  window.scrollTo(0,0);
+  const cards = (r.matches||[]).map(m => `
+    <div class="match">
+      <div class="match-top">
+        <div class="score">${m.matchScore}<small>점</small></div>
+        <div style="flex:1;min-width:0">
+          <b style="font-size:15.5px;letter-spacing:-.03em">${esc(m.물건이름)}</b>
+          <div class="meta">📍 ${esc(m.장소)} · ${esc(m.날짜)}</div>
+        </div>
+        ${thumb(m)}
+      </div>
+      <div class="gauge"><i style="width:${m.matchScore}%"></i></div>
+      <div class="why">${(m.matchWhy||[]).map(w=>'<span>'+esc(w)+'</span>').join('')}</div>
+      <button class="btn ghost" style="margin-top:12px;padding:11px"
+        onclick="go('detail','${m.ID}')">자세히 보기</button>
+    </div>`).join('');
+
+  view.innerHTML = `
+    <div style="text-align:center;padding:26px 0 8px">
+      <div style="font-size:44px">${r.matches && r.matches.length ? '✨' : '📮'}</div>
+      <div style="font-size:19px;font-weight:800;letter-spacing:-.04em;margin-top:8px">
+        ${r.matches && r.matches.length ? '비슷한 물건을 찾았어요' : '신고가 접수되었습니다'}</div>
+      <p style="color:var(--stone);font-size:13px;margin-top:6px">${esc(r.message)}</p>
+    </div>
+    ${r.matches && r.matches.length ? `
+      <div class="eyebrow"><h2>자동 매칭 결과</h2><span>100점 만점</span></div>
+      ${cards}
+      <div class="notice" style="margin-top:6px">
+        점수는 종류·색상·장소·날짜·특징이 얼마나 겹치는지를 계산한 값입니다.
+        점수가 높다고 무조건 내 물건은 아니니 상세 화면에서 꼭 확인하세요.
+      </div>` : `
+      <div class="notice">MY 화면에서 신고 내역과 새로 등록된 후보를 확인할 수 있습니다.</div>`}
+    <button class="btn" style="margin-top:16px" onclick="go('home')">홈으로</button>`;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ⑦ 화면 ⑤ 상세
+   ══════════════════════════════════════════════════════════════ */
+function Detail(id){
+  loading();
+  api('detail', {id}).then(r => {
+    if(!r.ok){ view.innerHTML = '<div class="empty">'+esc(r.message)+'</div>'; return; }
+    const it = r.item;
+    const done = it.상태 === 'RETURNED';
+    view.innerHTML = `
+      <div class="detail-hero">
+        ${it.사진URL ? '<img src="'+esc(it.사진URL)+'" alt="">' 
+                     : '<div class="big">'+(ICON[it.분류]||'📦')+'</div>'}
+        <h2>${esc(it.물건이름)}</h2>
+        ${badge(it.상태)}
+      </div>
+
+      <dl class="dl">
+        <div><dt>종류</dt><dd>${esc(it.분류)}</dd></div>
+        <div><dt>발견 장소</dt><dd>${esc(it.장소)}</dd></div>
+        <div><dt>발견 날짜</dt><dd>${esc(it.날짜)}</dd></div>
+        ${it.색상 ? '<div><dt>색상</dt><dd>'+esc(it.색상)+'</dd></div>' : ''}
+        <div><dt>보관 장소</dt><dd>${esc(it.보관장소||'학생회실')}</dd></div>
+        <div><dt>접수번호</dt><dd style="font-family:var(--mono);font-size:12px">${esc(it.ID)}</dd></div>
+      </dl>
+
+      <div class="notice" style="margin:18px 0">
+        🔒 자세한 특징은 일부러 공개하지 않습니다.<br>
+        본인 확인 질문에 답하면 학생회가 대조해서 확인해요.
+      </div>
+
+      ${done
+        ? '<button class="btn ghost" disabled>이미 반환된 물건입니다</button>'
+        : '<button class="btn tang" onclick="go(\'claim\',\''+it.ID+'\')">내 물건이에요</button>'}`;
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ⑧ 화면 ⑥ 소유자 확인 — 바로 주지 않습니다
+   ══════════════════════════════════════════════════════════════ */
+function Claim(id){
+  view.innerHTML = `
+    <section class="hero">
+      <h1>🔐 본인 확인</h1>
+      <p>물건을 잘못 전달하지 않기 위한 질문입니다. 아는 만큼만 적어주세요.</p>
+    </section>
+
+    <div class="field"><label>Q1. 색상과 생김새를 알려주세요</label>
+      <input type="text" id="a1" placeholder="예) 흰색, 케이스는 조금 누렜음"></div>
+    <div class="field"><label>Q2. 다른 물건과 구별되는 표시가 있나요?</label>
+      <input type="text" id="a2" placeholder="예) 뒷면에 고양이 스티커"></div>
+    <div class="field"><label>Q3. 언제·어디서 잃어버렸나요?</label>
+      <input type="text" id="a3" placeholder="예) 8월 17일 점심시간 도서관"></div>
+
+    <div class="row2">
+      <div class="field"><label>학년·반</label><input type="text" id="klass" placeholder="2-3"></div>
+      <div class="field"><label>이름</label><input type="text" id="who" placeholder="김제주"></div>
+    </div>
+
+    <div class="notice" style="margin-bottom:16px">
+      학생회가 등록된 특징과 답변을 대조합니다.<br>
+      확인되면 학생회실에서 수령할 수 있어요.
+    </div>
+
+    <button class="btn tang" id="send">확인 요청 보내기</button>`;
+
+  $('#send').onclick = function(){
+    const who = $('#who').value.trim(), klass = $('#klass').value.trim();
+    if(!who || !klass){ toast('학년·반과 이름을 입력해 주세요'); return; }
+    this.disabled = true; this.textContent = '보내는 중…';
+    api('claim', {itemId:id, 요청자이름:who, 요청자학반:klass,
+      답변1:$('#a1').value.trim(), 답변2:$('#a2').value.trim(), 답변3:$('#a3').value.trim()})
+    .then(r => {
+      if(!r.ok){ toast(r.message); this.disabled=false; this.textContent='다시 시도'; return; }
+      window.scrollTo(0,0);
+      view.innerHTML = `
+        <div class="empty" style="padding-top:60px">
+          <span class="big">📨</span>
+          <div style="font-size:19px;font-weight:800;color:var(--ink);letter-spacing:-.04em">요청을 보냈습니다</div>
+          <p style="margin-top:8px">학생회가 확인한 뒤 알려드릴게요.<br>보통 하루 안에 처리됩니다.</p>
+        </div>
+        <button class="btn" onclick="go('home')">홈으로</button>`;
+    });
+  };
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ⑨ 화면 ⑦ MY — 내 신고 내역
+   ══════════════════════════════════════════════════════════════ */
+function My(){
+  const saved = JSON.parse(localStorage.getItem('jfind_me') || '{}');
+  view.innerHTML = `
+    <section class="hero"><h1>내 신고 내역</h1>
+      <p>신고할 때 적은 학년·반과 이름으로 조회합니다</p></section>
+    <div class="row2">
+      <div class="field"><label>학년·반</label>
+        <input type="text" id="klass" value="${esc(saved.klass||'')}" placeholder="2-3"></div>
+      <div class="field"><label>이름</label>
+        <input type="text" id="who" value="${esc(saved.name||'')}" placeholder="김제주"></div>
+    </div>
+    <button class="btn" id="find">조회하기</button>
+    <div id="out"></div>`;
+
+  $('#find').onclick = () => {
+    const name = $('#who').value.trim(), klass = $('#klass').value.trim();
+    if(!name || !klass){ toast('학년·반과 이름을 모두 입력해 주세요'); return; }
+    localStorage.setItem('jfind_me', JSON.stringify({name, klass}));
+    $('#out').innerHTML = '<div class="spin">불러오는 중…</div>';
+    api('myLost', {name, klass}).then(r => {
+      if(!r.items || !r.items.length){
+        $('#out').innerHTML = '<div class="empty"><span class="big">📭</span>신고 내역이 없습니다.</div>'; return;
+      }
+      $('#out').innerHTML = r.items.map(l => `
+        <div class="eyebrow"><h2>${esc(l.물건이름)}</h2><span>${esc(l.날짜)}</span></div>
+        <div class="item" style="cursor:default">
+          ${thumb(l)}
+          <div class="item-body">
+            <div class="meta">📍 ${esc(l.장소)}에서 분실</div>
+            <div style="margin-top:5px">${badge(l.상태)}</div>
+          </div>
+        </div>
+        ${(l.matches||[]).length ? (l.matches||[]).map(m => `
+          <div class="match">
+            <div class="match-top">
+              <div class="score">${m.matchScore}<small>점</small></div>
+              <div style="flex:1;min-width:0"><b>${esc(m.물건이름)}</b>
+                <div class="meta">📍 ${esc(m.장소)} · ${esc(m.날짜)}</div></div>
+              ${thumb(m)}
+            </div>
+            <div class="gauge"><i style="width:${m.matchScore}%"></i></div>
+            <button class="btn ghost" style="margin-top:11px;padding:11px"
+              onclick="go('detail','${m.ID}')">확인하러 가기</button>
+          </div>`).join('')
+          : '<div class="notice" style="margin-bottom:16px">아직 비슷한 물건이 등록되지 않았어요.</div>'}
+      `).join('');
+    });
+  };
+  if(saved.name) $('#find').click();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ⑩ 화면 ⑧ 학생회 관리자
+   ══════════════════════════════════════════════════════════════ */
+let PIN = '';
+function Admin(){
+  if(!PIN){
+    view.innerHTML = `
+      <section class="hero"><h1>🔐 학생회 관리자</h1>
+        <p>분실물 담당 임원만 사용합니다</p></section>
+      <div class="field"><label>비밀번호</label>
+        <input type="password" id="pin" placeholder="••••"></div>
+      <button class="btn" id="in">들어가기</button>`;
+    const enter = () => { PIN = $('#pin').value.trim(); PIN ? Admin() : toast('비밀번호를 입력해 주세요'); };
+    $('#in').onclick = enter;
+    $('#pin').onkeydown = e => { if(e.key==='Enter') enter(); };
+    return;
+  }
+  loading();
+  api('adminBoard', {pin:PIN}).then(r => {
+    if(!r.ok){ PIN=''; toast(r.message); Admin(); return; }
+    const c = r.counts;
+    view.innerHTML = `
+      <section class="hero" style="margin-bottom:16px"><h1>오늘의 분실물</h1></section>
+      <div class="kpi">
+        <div><b>${c.pending}</b><small>승인 대기</small></div>
+        <div><b>${c.claim}</b><small>수령 요청</small></div>
+        <div><b>${c.stored}</b><small>보관 중</small></div>
+        <div><b>${c.returned}</b><small>반환 완료</small></div>
+      </div>
+
+      <div class="eyebrow"><h2>승인 대기</h2><span>${r.pending.length}건</span></div>
+      ${r.pending.map(f => `
+        <div class="item" style="cursor:default;align-items:flex-start">
+          ${thumb({분류:f.분류, 사진URL:f.사진URL})}
+          <div class="item-body">
+            <b>${esc(f.물건이름)}</b>
+            <div class="meta">📍 ${esc(f.습득장소)} · ${esc(f.습득날짜)}</div>
+            <div class="meta">등록 ${esc(f.등록자학반)} ${esc(f.등록자이름)}</div>
+            <div style="display:flex;gap:7px;margin-top:9px">
+              <button class="btn" style="padding:9px;font-size:13px"
+                onclick="approve('${f.ID}',true)">공개</button>
+              <button class="btn ghost" style="padding:9px;font-size:13px"
+                onclick="approve('${f.ID}',false)">반려</button>
+            </div>
+          </div>
+        </div>`).join('') || '<div class="empty">대기 중인 등록이 없습니다.</div>'}
+
+      <div class="eyebrow"><h2>수령 요청</h2><span>${r.claims.length}건</span></div>
+      ${r.claims.map(cl => `
+        <div class="match" style="border-left-color:var(--sea)">
+          <b style="font-size:15.5px">${esc(cl.물건이름)}</b>
+          <div class="meta">${esc(cl.요청자학반)} ${esc(cl.요청자이름)} · ${esc(cl.요청일시)}</div>
+          <dl class="dl" style="margin-top:12px">
+            <div><dt>등록된 색상</dt><dd>${esc(cl.원본색상||'-')}</dd></div>
+            <div><dt>등록된 특징</dt><dd>${esc(cl.원본특징||'-')}</dd></div>
+            <div><dt>답변 · 색상</dt><dd>${esc(cl.답변1||'-')}</dd></div>
+            <div><dt>답변 · 표시</dt><dd>${esc(cl.답변2||'-')}</dd></div>
+            <div><dt>답변 · 상황</dt><dd>${esc(cl.답변3||'-')}</dd></div>
+          </dl>
+          <div style="display:flex;gap:7px;margin-top:12px">
+            <button class="btn" style="padding:10px;font-size:13px"
+              onclick="decide('${cl.ID}',true)">확인 · 반환</button>
+            <button class="btn ghost" style="padding:10px;font-size:13px"
+              onclick="decide('${cl.ID}',false)">반려</button>
+          </div>
+        </div>`).join('') || '<div class="empty">확인할 요청이 없습니다.</div>'}
+
+      <button class="btn ghost" style="margin-top:20px"
+        onclick="PIN='';go('home')">나가기</button>`;
+  });
+}
+function approve(id, accept){
+  api('approve', {pin:PIN, id, accept}).then(r => { toast(r.message); Admin(); });
+}
+function decide(id, accept){
+  api('decide', {pin:PIN, id, accept}).then(r => { toast(r.message); Admin(); });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ⑪ 통계 — 학기말 학생회 보고서용
+   ══════════════════════════════════════════════════════════════ */
+function Stats(){
+  loading();
+  api('stats', {}).then(r => {
+    const max = Math.max(1, ...(r.byPlace||[]).map(x=>x.value));
+    view.innerHTML = `
+      <section class="hero"><h1>2026 제주여고<br>분실물 데이터</h1>
+        <p>학기말 학생회 보고서에 그대로 쓸 수 있어요</p></section>
+      <div class="kpi">
+        <div><b>${r.found}</b><small>습득물 등록</small></div>
+        <div><b>${r.lost}</b><small>분실 신고</small></div>
+        <div><b>${r.returned}</b><small>주인 반환</small></div>
+        <div><b>${r.returnRate}%</b><small>반환율</small></div>
+      </div>
+
+      <div class="eyebrow"><h2>많이 잃어버린 종류</h2></div>
+      ${(r.topItems||[]).map((x,i)=>`
+        <div class="bar"><b>${i+1}. ${esc(x.name)}</b>
+          <div class="track"><i style="width:${x.value/Math.max(1,r.topItems[0].value)*100}%;background:var(--tang)"></i></div>
+          <em>${x.value}</em></div>`).join('') || '<div class="empty">데이터가 쌓이면 표시됩니다.</div>'}
+
+      <div class="eyebrow"><h2>분실이 잦은 장소</h2></div>
+      ${(r.byPlace||[]).map(x=>`
+        <div class="bar"><b>${esc(x.name)}</b>
+          <div class="track"><i style="width:${x.value/max*100}%"></i></div>
+          <em>${x.value}</em></div>`).join('') || '<div class="empty">데이터가 쌓이면 표시됩니다.</div>'}
+
+      <div class="notice" style="margin-top:20px">
+        💡 장소별 데이터가 모이면 “급식실에 분실물 바구니를 두자” 같은
+        학생회 제안의 근거가 됩니다.
+      </div>`;
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ⑫ 사진 줄이기 — 4MB 사진을 200KB 정도로
+   ══════════════════════════════════════════════════════════════ */
+function shrink(file, maxSide, quality){
+  return new Promise(res => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        let {width:w, height:h} = img;
+        if(Math.max(w,h) > maxSide){
+          const k = maxSide / Math.max(w,h);
+          w = Math.round(w*k); h = Math.round(h*k);
+        }
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        res(cv.toDataURL('image/jpeg', quality));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ⑬ 미리보기용 예시 데이터 (서버 없이 화면만 볼 때)
+   ══════════════════════════════════════════════════════════════ */
+const DEMO = {
+  found: [
+    {ID:'F-20260818-1001', 분류:'전자기기', 물건이름:'흰색 무선 이어폰', 색상:'흰색',
+     장소:'도서관', 날짜:'2026-08-18', 특징:'케이스 뒷면에 고양이 스티커',
+     보관장소:'학생회실', 상태:'APPROVED', 등록일시:'2026-08-18 13:20'},
+    {ID:'F-20260818-1002', 분류:'생활용품', 물건이름:'검정 장우산', 색상:'검정',
+     장소:'급식실', 날짜:'2026-08-18', 특징:'손잡이에 이름표', 보관장소:'학생회실',
+     상태:'APPROVED', 등록일시:'2026-08-18 12:40'},
+    {ID:'F-20260817-1003', 분류:'의류/체육복', 물건이름:'체육복 상의', 색상:'남색',
+     장소:'체육관', 날짜:'2026-08-17', 특징:'2학년 표시', 보관장소:'학생회실',
+     상태:'CLAIM_REQUESTED', 등록일시:'2026-08-17 16:05'},
+    {ID:'F-20260816-1004', 분류:'문구류', 물건이름:'분홍 필통', 색상:'분홍',
+     장소:'교실', 날짜:'2026-08-16', 특징:'지퍼에 키링', 보관장소:'학생회실',
+     상태:'RETURNED', 등록일시:'2026-08-16 09:12'}
+  ],
+  lost: [], claims: []
+};
+
+function demoScore(l, f){
+  let s = 0; const why = [];
+  if(l.분류 === f.분류){ s+=25; why.push('분류 일치 +25'); }
+  if((f.물건이름||'').includes((l.물건이름||'').slice(0,2))){ s+=15; why.push('이름 유사 +15'); }
+  if(l.색상 && f.색상 && f.색상.includes(l.색상)){ s+=20; why.push('색상 일치 +20'); }
+  if(l.분실장소 === f.장소){ s+=25; why.push('장소 일치 +25'); }
+  const gap = Math.abs(new Date(l.분실날짜) - new Date(f.날짜))/86400000;
+  if(gap<=1){ s+=10; why.push('날짜 근접 +10'); } else if(gap<=3){ s+=7; why.push('날짜 3일 이내 +7'); }
+  return {score:Math.min(s,100), why};
+}
+
+function demo(action, p){
+  const D = DEMO;
+  if(action==='list'){
+    let rows = D.found.filter(f => f.상태!=='PENDING');
+    if(p.category && p.category!=='전체') rows = rows.filter(f=>f.분류===p.category);
+    if(p.place && p.place!=='전체') rows = rows.filter(f=>f.장소===p.place);
+    if(p.keyword) rows = rows.filter(f => (f.물건이름+f.특징+f.색상).includes(p.keyword));
+    return {ok:true, items:rows.slice(0, p.limit||60), total:rows.length};
+  }
+  if(action==='detail'){
+    const it = D.found.find(f=>f.ID===p.id);
+    return it ? {ok:true, item:it} : {ok:false, message:'해당 물건을 찾을 수 없습니다.'};
+  }
+  if(action==='addFound'){
+    const id='F-DEMO-'+Date.now().toString().slice(-4);
+    D.found.unshift({ID:id, 분류:p.분류, 물건이름:p.물건이름, 색상:p.색상, 장소:p.습득장소,
+      날짜:p.습득날짜, 특징:p.특징, 사진URL:p.photo, 보관장소:'학생회실',
+      상태:'PENDING', 등록일시:'방금'});
+    return {ok:true, id, message:'등록되었습니다.'};
+  }
+  if(action==='addLost'){
+    const id='L-DEMO-'+Date.now().toString().slice(-4);
+    const rec = Object.assign({ID:id, 상태:'SEARCHING', 장소:p.분실장소, 날짜:p.분실날짜,
+      신고자이름:p.신고자이름, 신고자학반:p.신고자학반}, p);
+    D.lost.unshift(rec);
+    const ms = D.found.filter(f=>f.상태==='APPROVED').map(f=>{
+      const m = demoScore(p, f);
+      return Object.assign({}, f, {matchScore:m.score, matchWhy:m.why});
+    }).filter(x=>x.matchScore>=55).sort((a,b)=>b.matchScore-a.matchScore);
+    return {ok:true, id, matches:ms,
+      message: ms.length ? '비슷한 물건 '+ms.length+'건을 찾았습니다.' : '신고가 접수되었습니다.'};
+  }
+  if(action==='myLost'){
+    const rows = D.lost.filter(l=>l.신고자이름===p.name && l.신고자학반===p.klass);
+    return {ok:true, items: rows.map(l => Object.assign({}, l, {
+      matches: D.found.filter(f=>f.상태==='APPROVED').map(f=>{
+        const m = demoScore(l, f);
+        return Object.assign({}, f, {matchScore:m.score, matchWhy:m.why});
+      }).filter(x=>x.matchScore>=55)
+    }))};
+  }
+  if(action==='claim'){
+    const it = D.found.find(f=>f.ID===p.itemId);
+    if(it) it.상태='CLAIM_REQUESTED';
+    D.claims.push(Object.assign({ID:'C-DEMO', 물건이름:it?it.물건이름:'', 원본색상:it?it.색상:'',
+      원본특징:it?it.특징:'', 요청일시:'방금', 상태:'WAITING'}, p,
+      {요청자이름:p.요청자이름, 요청자학반:p.요청자학반}));
+    return {ok:true, message:'요청이 접수되었습니다.'};
+  }
+  if(action==='adminBoard'){
+    return {ok:true,
+      counts:{pending:D.found.filter(f=>f.상태==='PENDING').length,
+              stored:D.found.filter(f=>f.상태==='APPROVED').length,
+              claim:D.claims.length,
+              returned:D.found.filter(f=>f.상태==='RETURNED').length},
+      pending:D.found.filter(f=>f.상태==='PENDING').map(f=>Object.assign({},f,
+        {습득장소:f.장소, 습득날짜:f.날짜, 등록자학반:'2-3', 등록자이름:'김제주'})),
+      claims:D.claims, stored:[]};
+  }
+  if(action==='approve'){
+    const it = D.found.find(f=>f.ID===p.id); if(it) it.상태 = p.accept?'APPROVED':'REJECTED';
+    return {ok:true, message:p.accept?'공개했습니다.':'반려했습니다.'};
+  }
+  if(action==='decide'){
+    const c = D.claims.find(x=>x.ID===p.id);
+    if(c){ const it = D.found.find(f=>f.ID===c.itemId); if(it) it.상태 = p.accept?'RETURNED':'APPROVED'; }
+    D.claims = D.claims.filter(x=>x.ID!==p.id);
+    return {ok:true, message:p.accept?'반환 처리했습니다.':'반려했습니다.'};
+  }
+  if(action==='stats'){
+    const f = D.found;
+    const cnt = (key) => {
+      const m = {}; f.forEach(x => m[x[key]] = (m[x[key]]||0)+1);
+      return Object.keys(m).map(k=>({name:k, value:m[k]})).sort((a,b)=>b.value-a.value);
+    };
+    const ret = f.filter(x=>x.상태==='RETURNED').length;
+    return {ok:true, found:f.length, lost:D.lost.length, returned:ret,
+      returnRate: f.length ? Math.round(ret/f.length*1000)/10 : 0,
+      topItems:cnt('분류').slice(0,5), byPlace:cnt('장소').slice(0,6)};
+  }
+  return {ok:false, message:'미리보기에서는 지원하지 않는 기능입니다.'};
+}
+
+/* ── 시작 ─────────────────────────────────── */
+if(MODE === 'demo') $('#demoFlag').hidden = false;
+go('home');
+</script>
+</body>
+</html>
