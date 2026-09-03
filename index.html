@@ -298,6 +298,7 @@ function api(action, payload){
    ══════════════════════════════════════════════════════════════ */
 const CATEGORIES = ['전자기기','의류/체육복','지갑/카드','문구류','생활용품','기타'];
 const PLACES = ['교실','복도','도서관','급식실','체육관','운동장','중앙현관','화장실','특별실','기타'];
+const STORAGES = ['1학년실','2학년실','3학년실','학생부실'];   // 물건을 맡기는 곳
 const ICON = {'전자기기':'🎧','의류/체육복':'👕','지갑/카드':'💳','문구류':'✏️','생활용품':'☂️','기타':'📦'};
 const LABEL = {PENDING:'승인 대기', APPROVED:'보관 중', CLAIM_REQUESTED:'수령 요청됨',
                RETURNED:'반환 완료', REJECTED:'반려', SEARCHING:'찾는 중',
@@ -329,6 +330,7 @@ function itemCard(it){
     + thumb(it)
     + '<div class="item-body"><b>'+esc(it.물건이름)+'</b>'
     + '<div class="meta">📍 '+esc(it.장소)+' · '+esc(it.날짜)+'</div>'
+    + (it.보관장소 ? '<div class="meta">📦 '+esc(it.보관장소)+' 보관</div>' : '')
     + '<div style="margin-top:5px">'+badge(it.상태)+'</div></div></button>';
 }
 
@@ -359,7 +361,7 @@ function Home(){
     view.innerHTML = `
       <section class="hero">
         <h1>잃어버린 물건,<br>학교 안에 있을 거예요</h1>
-        <p>등록된 물건은 학생회실에서 보관합니다</p>
+        <p>1·2·3학년실과 학생부실에서 보관합니다</p>
       </section>
 
       <div class="searchbar" onclick="go('search')">
@@ -387,7 +389,7 @@ function Home(){
 /* ══════════════════════════════════════════════════════════════
    ⑤ 화면 ② 검색
    ══════════════════════════════════════════════════════════════ */
-const Q = {keyword:'', category:'전체', place:'전체', days:''};
+const Q = {keyword:'', category:'전체', place:'전체', storage:'전체', days:''};
 
 function Search(){
   view.innerHTML = `
@@ -408,6 +410,12 @@ function Search(){
         `<button class="chip" data-v="${c}" aria-pressed="${Q.place===c}">${c}</button>`).join('')}
     </div>
 
+    <div class="eyebrow"><h2>보관 중인 곳</h2></div>
+    <div class="chips" id="stf">
+      ${['전체'].concat(STORAGES).map(c =>
+        `<button class="chip" data-v="${c}" aria-pressed="${Q.storage===c}">${c}</button>`).join('')}
+    </div>
+
     <div class="eyebrow"><h2>기간</h2></div>
     <div class="chips" id="dy">
       ${[['','전체'],['7','최근 7일'],['30','최근 30일']].map(([v,t]) =>
@@ -426,7 +434,7 @@ function Search(){
       load();
     };
   };
-  pick('cat','category'); pick('pl','place'); pick('dy','days');
+  pick('cat','category'); pick('pl','place'); pick('stf','storage'); pick('dy','days');
 
   let timer;
   $('#q').oninput = e => { Q.keyword = e.target.value; clearTimeout(timer); timer = setTimeout(load, 350); };
@@ -492,6 +500,15 @@ function Add(kind){
       </div>
     </div>
 
+    ${isFound ? `
+    <div class="field">
+      <label>어디에 맡길 건가요? <span class="hint">가까운 곳으로 골라주세요</span></label>
+      <div class="chips" id="st">
+        ${STORAGES.map(c =>
+          `<button class="chip" data-v="${c}" aria-pressed="false">${c}</button>`).join('')}
+      </div>
+    </div>` : ''}
+
     <div class="row2">
       <div class="field"><label>${isFound?'주운 날':'잃어버린 날'}</label>
         <input type="date" id="date" value="${today()}"></div>
@@ -519,8 +536,8 @@ function Add(kind){
       ${isFound ? '습득물 등록하기' : '분실 신고하기'}</button>`;
 
   // 종류·장소 선택
-  ['cat','pl'].forEach(id => {
-    const box = $('#'+id);
+  ['cat','pl','st'].forEach(id => {
+    const box = $('#'+id); if(!box) return;
     box.onclick = e => {
       const b = e.target.closest('.chip'); if(!b) return;
       box.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', c===b));
@@ -542,6 +559,10 @@ function Add(kind){
   $('#submit').onclick = function(){
     const name = $('#name').value.trim();
     if(!name){ toast('무엇인지 한 줄만 적어주세요'); $('#name').focus(); return; }
+    if(isFound && !picked('st')){
+      toast('물건을 맡길 곳을 선택해 주세요');
+      $('#st').scrollIntoView({block:'center', behavior:'smooth'}); return;
+    }
     this.disabled = true; this.textContent = '보내는 중…';
 
     const base = {
@@ -550,6 +571,7 @@ function Add(kind){
     };
     const payload = isFound
       ? Object.assign(base, {습득장소:picked('pl'), 습득날짜:$('#date').value,
+          보관장소:picked('st'),
           등록자이름:$('#who').value.trim(), 등록자학반:$('#klass').value.trim()})
       : Object.assign(base, {분실장소:picked('pl'), 분실날짜:$('#date').value,
           신고자이름:$('#who').value.trim(), 신고자학반:$('#klass').value.trim()});
@@ -568,9 +590,17 @@ function Done(r){
     <div class="empty" style="padding-top:60px">
       <span class="big">🎉</span>
       <div style="font-size:19px;font-weight:800;color:var(--ink);letter-spacing:-.04em">등록되었습니다</div>
-      <p style="margin-top:8px">학생회 확인 후 목록에 공개됩니다.<br>물건은 학생회실에 맡겨 주세요.</p>
+      <p style="margin-top:8px">학생회 확인 후 목록에 공개됩니다.</p>
       <div style="font-family:var(--mono);font-size:12px;margin-top:14px;color:var(--stone)">접수번호 ${esc(r.id)}</div>
     </div>
+    ${r.storage ? `
+    <div style="background:var(--tang-soft);border-radius:14px;padding:20px;text-align:center;margin-bottom:16px">
+      <div style="font-size:12.5px;color:var(--warn);font-weight:700">이제 물건을 맡겨주세요</div>
+      <div style="font-size:26px;font-weight:800;letter-spacing:-.05em;color:var(--warn);margin-top:6px">
+        📦 ${esc(r.storage)}</div>
+      <div style="font-size:12px;color:var(--warn);margin-top:6px;opacity:.85">
+        여기에 맡기셔야 주인이 찾아갈 수 있어요</div>
+    </div>` : ''}
     <button class="btn" onclick="go('home')">홈으로</button>`;
 }
 
@@ -633,13 +663,15 @@ function Detail(id){
         <div><dt>발견 장소</dt><dd>${esc(it.장소)}</dd></div>
         <div><dt>발견 날짜</dt><dd>${esc(it.날짜)}</dd></div>
         ${it.색상 ? '<div><dt>색상</dt><dd>'+esc(it.색상)+'</dd></div>' : ''}
-        <div><dt>보관 장소</dt><dd>${esc(it.보관장소||'학생회실')}</dd></div>
+        <div><dt>보관 중인 곳</dt>
+          <dd style="color:var(--tang)">📦 ${esc(it.보관장소||'-')}</dd></div>
         <div><dt>접수번호</dt><dd style="font-family:var(--mono);font-size:12px">${esc(it.ID)}</dd></div>
       </dl>
 
       <div class="notice" style="margin:18px 0">
         🔒 자세한 특징은 일부러 공개하지 않습니다.<br>
-        본인 확인 질문에 답하면 학생회가 대조해서 확인해요.
+        본인 확인 질문에 답하면 학생회가 대조해서 확인해요.<br>
+        확인이 끝나면 <b>${esc(it.보관장소||'보관 장소')}</b>에서 받아 가시면 됩니다.
       </div>
 
       ${done
@@ -672,7 +704,7 @@ function Claim(id){
 
     <div class="notice" style="margin-bottom:16px">
       학생회가 등록된 특징과 답변을 대조합니다.<br>
-      확인되면 학생회실에서 수령할 수 있어요.
+      확인되면 물건이 보관된 곳에서 수령할 수 있어요.
     </div>
 
     <button class="btn tang" id="send">확인 요청 보내기</button>`;
@@ -788,6 +820,7 @@ function Admin(){
           <div class="item-body">
             <b>${esc(f.물건이름)}</b>
             <div class="meta">📍 ${esc(f.습득장소)} · ${esc(f.습득날짜)}</div>
+            <div class="meta" style="color:var(--tang);font-weight:600">📦 ${esc(f.보관장소)}</div>
             <div class="meta">등록 ${esc(f.등록자학반)} ${esc(f.등록자이름)}</div>
             <div style="display:flex;gap:7px;margin-top:9px">
               <button class="btn" style="padding:9px;font-size:13px"
@@ -858,6 +891,12 @@ function Stats(){
           <div class="track"><i style="width:${x.value/max*100}%"></i></div>
           <em>${x.value}</em></div>`).join('') || '<div class="empty">데이터가 쌓이면 표시됩니다.</div>'}
 
+      <div class="eyebrow"><h2>지금 어디에 몇 개 있나</h2></div>
+      ${(r.byStorage||[]).map(x=>`
+        <div class="bar"><b>${esc(x.name)}</b>
+          <div class="track"><i style="width:${x.value/Math.max(1,...(r.byStorage||[]).map(y=>y.value))*100}%;background:var(--tang)"></i></div>
+          <em>${x.value}</em></div>`).join('') || '<div class="empty">보관 중인 물건이 없습니다.</div>'}
+
       <div class="notice" style="margin-top:20px">
         💡 장소별 데이터가 모이면 “급식실에 분실물 바구니를 두자” 같은
         학생회 제안의 근거가 됩니다.
@@ -897,15 +936,15 @@ const DEMO = {
   found: [
     {ID:'F-20260818-1001', 분류:'전자기기', 물건이름:'흰색 무선 이어폰', 색상:'흰색',
      장소:'도서관', 날짜:'2026-08-18', 특징:'케이스 뒷면에 고양이 스티커',
-     보관장소:'학생회실', 상태:'APPROVED', 등록일시:'2026-08-18 13:20'},
+     보관장소:'2학년실', 상태:'APPROVED', 등록일시:'2026-08-18 13:20'},
     {ID:'F-20260818-1002', 분류:'생활용품', 물건이름:'검정 장우산', 색상:'검정',
-     장소:'급식실', 날짜:'2026-08-18', 특징:'손잡이에 이름표', 보관장소:'학생회실',
+     장소:'급식실', 날짜:'2026-08-18', 특징:'손잡이에 이름표', 보관장소:'학생부실',
      상태:'APPROVED', 등록일시:'2026-08-18 12:40'},
     {ID:'F-20260817-1003', 분류:'의류/체육복', 물건이름:'체육복 상의', 색상:'남색',
-     장소:'체육관', 날짜:'2026-08-17', 특징:'2학년 표시', 보관장소:'학생회실',
+     장소:'체육관', 날짜:'2026-08-17', 특징:'2학년 표시', 보관장소:'3학년실',
      상태:'CLAIM_REQUESTED', 등록일시:'2026-08-17 16:05'},
     {ID:'F-20260816-1004', 분류:'문구류', 물건이름:'분홍 필통', 색상:'분홍',
-     장소:'교실', 날짜:'2026-08-16', 특징:'지퍼에 키링', 보관장소:'학생회실',
+     장소:'교실', 날짜:'2026-08-16', 특징:'지퍼에 키링', 보관장소:'1학년실',
      상태:'RETURNED', 등록일시:'2026-08-16 09:12'}
   ],
   lost: [], claims: []
@@ -928,6 +967,7 @@ function demo(action, p){
     let rows = D.found.filter(f => f.상태!=='PENDING');
     if(p.category && p.category!=='전체') rows = rows.filter(f=>f.분류===p.category);
     if(p.place && p.place!=='전체') rows = rows.filter(f=>f.장소===p.place);
+    if(p.storage && p.storage!=='전체') rows = rows.filter(f=>f.보관장소===p.storage);
     if(p.keyword) rows = rows.filter(f => (f.물건이름+f.특징+f.색상).includes(p.keyword));
     return {ok:true, items:rows.slice(0, p.limit||60), total:rows.length};
   }
@@ -936,11 +976,14 @@ function demo(action, p){
     return it ? {ok:true, item:it} : {ok:false, message:'해당 물건을 찾을 수 없습니다.'};
   }
   if(action==='addFound'){
+    if(STORAGES.indexOf(p.보관장소) < 0)
+      return {ok:false, message:'물건을 맡길 곳을 선택해 주세요.'};
     const id='F-DEMO-'+Date.now().toString().slice(-4);
     D.found.unshift({ID:id, 분류:p.분류, 물건이름:p.물건이름, 색상:p.색상, 장소:p.습득장소,
-      날짜:p.습득날짜, 특징:p.특징, 사진URL:p.photo, 보관장소:'학생회실',
+      날짜:p.습득날짜, 특징:p.특징, 사진URL:p.photo, 보관장소:p.보관장소,
       상태:'PENDING', 등록일시:'방금'});
-    return {ok:true, id, message:'등록되었습니다.'};
+    return {ok:true, id, storage:p.보관장소,
+            message:'등록되었습니다. 물건은 '+p.보관장소+'에 맡겨 주세요.'};
   }
   if(action==='addLost'){
     const id='L-DEMO-'+Date.now().toString().slice(-4);
@@ -1000,7 +1043,8 @@ function demo(action, p){
     const ret = f.filter(x=>x.상태==='RETURNED').length;
     return {ok:true, found:f.length, lost:D.lost.length, returned:ret,
       returnRate: f.length ? Math.round(ret/f.length*1000)/10 : 0,
-      topItems:cnt('분류').slice(0,5), byPlace:cnt('장소').slice(0,6)};
+      topItems:cnt('분류').slice(0,5), byPlace:cnt('장소').slice(0,6),
+      byStorage:cnt('보관장소')};
   }
   return {ok:false, message:'미리보기에서는 지원하지 않는 기능입니다.'};
 }
